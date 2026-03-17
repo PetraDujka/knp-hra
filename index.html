@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KÁMEN NŮŽKY PAPÍR – Bitva Osudu</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#cc0000;--red2:#ff3333;--gold:#ffd700;--dark:#080808;
+  --purple:#8a00cc;--green:#00cc44;--blue:#4488ff;
+}
+body{
+  background:#030303;color:#fff;
+  font-family:'Press Start 2P',monospace;
+  width:100vw;height:100vh;overflow:hidden;position:relative;
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.25) 2px,rgba(0,0,0,.25) 4px);
+}
+.screen{display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column}
+.screen.active{display:flex}
+
+/* ── TITLE ── */
+#screen-title{background:radial-gradient(ellipse at 50% 30%,#1a0000 0%,#000 65%)}
+.t-sub{font-size:.55em;color:var(--gold);text-shadow:0 0 15px var(--gold);letter-spacing:8px;margin-bottom:12px}
+.t-main{font-size:clamp(1.4em,4vw,2.2em);color:var(--red2);line-height:1.45;
+  text-shadow:0 0 20px #f00,0 0 50px #f00,0 0 100px #f40;text-align:center}
+.t-ed{font-size:.45em;color:#f60;text-shadow:0 0 10px #f60;letter-spacing:4px;margin-top:10px}
+.press{font-size:.5em;color:#fff;animation:blink 1s steps(1) infinite;margin-top:35px}
+.fireline{width:100%;height:3px;background:linear-gradient(90deg,transparent,var(--red),var(--gold),var(--red),transparent);box-shadow:0 0 10px var(--red);margin:20px 0}
+
+/* ── SELECT ── */
+#screen-select{background:radial-gradient(ellipse at 50% 50%,#0d0000 0%,#000 80%);gap:0}
+.sel-title{font-size:.85em;color:var(--gold);text-shadow:0 0 15px var(--gold);letter-spacing:4px;margin-bottom:6px}
+.sel-hint{font-size:.35em;color:#666;margin-bottom:22px}
+.char-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:680px}
+.char-card{
+  cursor:pointer;border:2px solid #2a2a2a;background:#0a0a0a;
+  padding:8px;text-align:center;transition:all .15s;position:relative;
+}
+.char-card:hover,.char-card.selected{border-color:var(--gold);box-shadow:0 0 18px var(--gold),inset 0 0 15px rgba(255,215,0,.08)}
+.char-card svg{width:90px;height:120px;display:block;margin:0 auto 7px}
+.char-card .cn{font-size:.42em;color:var(--gold);text-shadow:0 0 8px var(--gold)}
+.char-card .ct{font-size:.28em;color:#666;margin-top:3px}
+
+/* ── VS ── */
+#screen-vs{background:#000}
+.vs-wrap{display:flex;align-items:center;gap:30px;max-width:860px;width:100%;justify-content:center}
+.vs-side{text-align:center;flex:1}
+.vs-side svg{width:140px;height:185px;display:block;margin:0 auto 12px}
+.vs-name{font-size:.75em;color:var(--gold);text-shadow:0 0 12px var(--gold)}
+.vs-txt{font-size:3.5em;color:var(--red2);text-shadow:0 0 30px #f00,0 0 60px #f00;animation:pulse .45s infinite alternate}
+
+/* ── ARENA ── */
+#screen-arena{
+  background:radial-gradient(ellipse at 50% 110%,#1a0000 0%,transparent 55%),
+             radial-gradient(ellipse at 50% -10%,#0d0011 0%,transparent 50%),#050505;
+  flex-direction:column;justify-content:space-between;padding:0;padding-bottom:10vh;
+}
+.lifebars{
+  width:100%;display:flex;align-items:center;gap:8px;
+  padding:8px 16px;background:rgba(0,0,0,.85);border-bottom:2px solid var(--red);
+  flex-shrink:0;
+}
+.lb-wrap{flex:1;display:flex;flex-direction:column;gap:3px}
+.lb-wrap.cpu{align-items:flex-end}
+.lb-lbl{font-size:.3em;color:var(--gold);text-shadow:0 0 6px var(--gold)}
+.lb-track{width:100%;height:16px;background:#111;border:1px solid #333;overflow:hidden;position:relative}
+.lb-fill{height:100%;background:linear-gradient(90deg,#a00,#f30,#f60);box-shadow:0 0 8px #f30;transition:width .5s ease}
+.lb-fill::after{content:'';position:absolute;top:0;left:0;right:0;height:40%;background:rgba(255,255,255,.15)}
+.lb-fill.cpu-fill{float:right}
+.round-box{text-align:center;white-space:nowrap;min-width:80px}
+.round-lbl{font-size:.35em;color:#fff;text-shadow:0 0 6px #fff}
+.dots{display:flex;gap:4px;justify-content:center;margin-top:3px}
+.dot{width:7px;height:7px;border-radius:50%;border:1px solid #555}
+.dot.on{background:var(--gold);box-shadow:0 0 6px var(--gold);border-color:var(--gold)}
+.dot-sep{font-size:.25em;color:#333;text-align:center;margin:2px 0}
+
+.arena-mid{display:flex;align-items:flex-end;justify-content:center;width:100%;flex:1;padding:10px 16px;gap:30px;min-height:0;max-width:720px;align-self:center}
+.af{display:flex;flex-direction:column;align-items:center;gap:6px}
+.af-portrait{position:relative;transition:transform .3s}
+.af-portrait.win{animation:winBounce .5s ease infinite alternate;filter:drop-shadow(0 0 20px gold)!important}
+.af-portrait.lose{animation:loseFall .5s ease forwards;filter:grayscale(.6) brightness(.5)!important}
+.af-portrait.draw{animation:drawShake .25s ease infinite alternate}
+.hand-em{font-size:2.8em;min-height:60px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 8px #f30)}
+.hand-em.flipped{transform:scaleX(-1)}
+
+.arena-ctr{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;flex:1;min-width:100px}
+.cntdown{font-size:clamp(2.5em,6vw,4em);color:var(--red2);text-shadow:0 0 25px #f00,0 0 50px #f00;min-height:70px;display:flex;align-items:center;justify-content:center}
+.round-result{font-size:clamp(.5em,1.5vw,.85em);text-align:center;min-height:50px;display:flex;align-items:center;justify-content:center}
+
+.choice-bar{
+  display:flex;gap:12px;padding:12px 16px;
+  background:rgba(0,0,0,.8);border-top:2px solid var(--red);
+  width:100%;justify-content:center;flex-shrink:0;
+}
+.cbtn{
+  font-family:'Press Start 2P',monospace;font-size:.5em;
+  padding:10px 16px;cursor:pointer;border:2px solid var(--gold);
+  background:rgba(0,0,0,.8);color:var(--gold);text-shadow:0 0 6px var(--gold);
+  box-shadow:0 0 10px rgba(255,215,0,.25);transition:all .1s;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.cbtn:hover{background:rgba(255,215,0,.12);box-shadow:0 0 20px rgba(255,215,0,.5);transform:scale(1.06)}
+.cbtn:active{transform:scale(.95)}
+.cbtn:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.cbtn .bi{font-size:2em}
+
+/* ── FINISH ── */
+#screen-finish{background:radial-gradient(ellipse at 50% 50%,#1a0000 0%,#000 70%)}
+.fin-title{font-size:clamp(.9em,3vw,1.6em);color:var(--gold);text-shadow:0 0 20px var(--gold),0 0 40px #f80;letter-spacing:6px;margin-bottom:8px;animation:flash .5s infinite alternate}
+.fin-name{font-size:clamp(1em,3.5vw,2em);color:var(--red2);text-shadow:0 0 30px #f00,0 0 60px #f00;margin-bottom:18px}
+#fin-portrait svg{width:170px;height:225px;display:block;margin:0 auto 16px;animation:riseUp 1s ease-out}
+.fin-tag{font-size:.45em;color:#f60;text-shadow:0 0 10px #f60;letter-spacing:3px;margin-bottom:14px}
+.fin-score{font-size:.4em;color:#666;margin-bottom:28px}
+.btn-again{font-family:'Press Start 2P',monospace;font-size:.55em;padding:14px 28px;background:var(--red);color:#fff;border:3px solid var(--gold);cursor:pointer;text-shadow:0 0 6px #fff;box-shadow:0 0 20px var(--red);animation:blink 1.5s steps(1) infinite}
+.btn-again:hover{background:var(--red2);box-shadow:0 0 30px var(--red2);animation:none}
+
+/* ── MK MESSAGE ── */
+.mk-msg{
+  position:fixed;top:45%;left:50%;transform:translate(-50%,-50%);
+  font-size:clamp(1.2em,4vw,2.2em);pointer-events:none;z-index:500;
+  opacity:0;white-space:nowrap;animation:mkPop 1.6s ease-out forwards;
+}
+
+/* ── KEYFRAMES ── */
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.08)}}
+@keyframes winBounce{from{transform:translateY(0) scale(1)}to{transform:translateY(-14px) scale(1.05)}}
+@keyframes loseFall{0%{transform:rotate(0deg) translateY(0)}100%{transform:rotate(-22deg) translateY(18px)}}
+@keyframes drawShake{from{transform:translateX(-4px)}to{transform:translateX(4px)}}
+@keyframes cdPop{from{transform:scale(1.6);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes flash{from{opacity:1}to{opacity:.65}}
+@keyframes riseUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes mkPop{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}
+  18%{opacity:1;transform:translate(-50%,-50%) scale(1.3)}
+  35%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  70%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(.8)}
+}
+</style>
+</head>
+<body>
+
+<!-- TITLE -->
+<div id="screen-title" class="screen active">
+  <div class="t-sub">⚔ BITVA OSUDU ⚔</div>
+  <div class="t-main">KÁMEN<br>NŮŽKY<br>PAPÍR</div>
+  <div class="t-ed">ULTIMATE KOMBAT EDITION</div>
+  <div class="fireline"></div>
+  <div class="press">▶ STISKNI PRO ZAČÁTEK ◀</div>
+</div>
+
+<!-- SELECT -->
+<div id="screen-select" class="screen">
+  <div class="sel-title">✦ VYBER BOJOVNÍKA ✦</div>
+  <div class="sel-hint">Klikni pro výběr</div>
+  <div class="char-grid" id="char-grid"></div>
+</div>
+
+<!-- VS -->
+<div id="screen-vs" class="screen">
+  <div class="vs-wrap">
+    <div class="vs-side">
+      <svg id="vsp-p" viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="vs-name" id="vsn-p"></div>
+    </div>
+    <div class="vs-txt">VS</div>
+    <div class="vs-side">
+      <svg id="vsp-c" viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg" style="transform:scaleX(-1)"></svg>
+      <div class="vs-name" id="vsn-c"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ARENA -->
+<div id="screen-arena" class="screen">
+  <div class="lifebars">
+    <div class="lb-wrap">
+      <div class="lb-lbl" id="lb-pname">HRÁČ</div>
+      <div class="lb-track"><div class="lb-fill" id="lb-p" style="width:100%"></div></div>
+    </div>
+    <div class="round-box">
+      <div class="round-lbl" id="round-lbl">KOLO 1</div>
+      <div class="dots" id="p-dots"></div>
+      <div class="dot-sep">▪</div>
+      <div class="dots" id="c-dots"></div>
+    </div>
+    <div class="lb-wrap cpu">
+      <div class="lb-lbl" id="lb-cname">CPU</div>
+      <div class="lb-track" style="direction:rtl"><div class="lb-fill" id="lb-c" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <div class="arena-mid">
+    <div class="af">
+      <div class="af-portrait" id="af-p"></div>
+      <div class="hand-em flipped" id="hand-p" style="display:none"></div>
+    </div>
+    <div class="arena-ctr">
+      <div class="cntdown" id="cntdown"></div>
+      <div class="round-result" id="round-res"></div>
+    </div>
+    <div class="af">
+      <div class="af-portrait" id="af-c"></div>
+      <div class="hand-em" id="hand-c" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="choice-bar" id="choice-bar">
+    <button class="cbtn" onclick="pick('rock')"><span class="bi">✊</span>KÁMEN</button>
+    <button class="cbtn" onclick="pick('scissors')"><span class="bi">✌️</span>NŮŽKY</button>
+    <button class="cbtn" onclick="pick('paper')"><span class="bi">🖐️</span>PAPÍR</button>
+  </div>
+</div>
+
+<!-- FINISH -->
+<div id="screen-finish" class="screen">
+  <div class="fin-title" id="fin-title">DOKONÁNO!</div>
+  <div class="fin-name" id="fin-name"></div>
+  <div id="fin-portrait"></div>
+  <div class="fin-tag" id="fin-tag"></div>
+  <div class="fin-score" id="fin-score"></div>
+  <button class="btn-again" onclick="resetGame()">▶ HRÁT ZNOVU ◀</button>
+</div>
+
+<script>
+// ─── AUDIO ───────────────────────────────────────────────────────
+let AC = null;
+function ac(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC}
+function note(f,t,dur,type='square',vol=.35){
+  const o=ac().createOscillator(),g=ac().createGain();
+  o.connect(g);g.connect(ac().destination);
+  o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(vol,t);
+  g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.start(t);o.stop(t+dur);
+}
+function sndHit(){
+  const t=ac().currentTime;
+  note(180,t,.06,'sawtooth',.6);note(90,t+.06,.12,'sawtooth',.5);
+  const b=ac().createBuffer(1,ac().sampleRate*.08,ac().sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*.5;
+  const s=ac().createBufferSource(),g=ac().createGain();
+  s.buffer=b;g.gain.setValueAtTime(.4,t);g.gain.exponentialRampToValueAtTime(.001,t+.08);
+  s.connect(g);g.connect(ac().destination);s.start(t);
+}
+function sndTick(){note(440,ac().currentTime,.08,'square',.4)}
+function sndGo(){const t=ac().currentTime;note(880,t,.1,'square',.5);note(1100,t+.1,.15,'square',.5)}
+function sndRoundW(){const t=ac().currentTime;[523,659,784,659,1047].forEach((f,i)=>note(f,t+i*.12,.18,'square',.4))}
+function sndRoundL(){const t=ac().currentTime;[400,320,260,200].forEach((f,i)=>note(f,t+i*.1,.15,'sawtooth',.4))}
+function sndDraw(){const t=ac().currentTime;[440,440].forEach((f,i)=>note(f,t+i*.15,.1,'square',.3))}
+function sndMatchW(){
+  const t=ac().currentTime;
+  const m=[523,523,523,415,466,523,466,523,784],d=[.1,.1,.1,.1,.1,.2,.1,.1,.6];
+  let off=0;m.forEach((f,i)=>{note(f,t+off,d[i]+.1,'square',.5);off+=d[i]});
+  [130,130,196].forEach((f,i)=>note(f,t+i*.3,.4,'sawtooth',.3));
+}
+function sndMatchL(){const t=ac().currentTime;[523,415,349,261,196].forEach((f,i)=>note(f,t+i*.2,.25,'sawtooth',.4))}
+
+// ─── CHARACTERS ──────────────────────────────────────────────────
+const chars=[
+{id:'kragen',name:'KRAGEN',title:'Stínový Ninja',color:'#9B30FF',tagline:'TEMNOTA ZVÍTĚZILA!',
+svg:`<rect width="120" height="160" fill="#0d0020"/>
+<defs><radialGradient id="gk" cx="50%" cy="30%"><stop offset="0%" stop-color="#2a0066"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>
+<rect width="120" height="160" fill="url(#gk)" opacity=".6"/>
+<path d="M20 160 L20 108 Q60 96 100 108 L100 160Z" fill="#0a001a"/>
+<ellipse cx="60" cy="73" rx="28" ry="32" fill="#0f0025"/>
+<path d="M32 62 Q60 42 88 62 Q85 46 60 39 Q35 46 32 62Z" fill="#1a0040"/>
+<rect x="34" y="83" width="52" height="21" rx="4" fill="#220050"/>
+<line x1="34" y1="91" x2="86" y2="91" stroke="#3a0080" stroke-width="1"/>
+<rect x="30" y="58" width="60" height="10" rx="2" fill="#3a0080"/>
+<rect x="55" y="55" width="10" height="5" fill="#5000cc"/>
+<ellipse cx="47" cy="78" rx="7" ry="5" fill="#9B30FF" opacity=".9"/>
+<ellipse cx="73" cy="78" rx="7" ry="5" fill="#9B30FF" opacity=".9"/>
+<ellipse cx="47" cy="78" rx="4" ry="3" fill="white"/>
+<ellipse cx="73" cy="78" rx="4" ry="3" fill="white"/>
+<ellipse cx="47" cy="78" rx="10" ry="8" fill="none" stroke="#9B30FF" stroke-width="1.5" opacity=".55"/>
+<ellipse cx="73" cy="78" rx="10" ry="8" fill="none" stroke="#9B30FF" stroke-width="1.5" opacity=".55"/>
+<path d="M20 108 Q10 97 15 86 L30 96Z" fill="#1a0040"/>
+<path d="M100 108 Q110 97 105 86 L90 96Z" fill="#1a0040"/>
+<rect x="48" y="132" width="4" height="14" rx="2" fill="#777" transform="rotate(-15 50 139)"/>
+<rect x="68" y="132" width="4" height="14" rx="2" fill="#777" transform="rotate(15 70 139)"/>`},
+
+{id:'valeria',name:'VALERIA',title:'Ohnivá Válečnice',color:'#FF4400',tagline:'OHEŇ TRIUMFUJE!',
+svg:`<rect width="120" height="160" fill="#1a0500"/>
+<defs><radialGradient id="gv" cx="50%" cy="70%"><stop offset="0%" stop-color="#3d0d00"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>
+<rect width="120" height="160" fill="url(#gv)"/>
+<path d="M15 160 L15 112 Q60 99 105 112 L105 160Z" fill="#1a0500"/>
+<path d="M30 112 L60 101 L90 112 L85 132 L60 127 L35 132Z" fill="#8B0000"/>
+<path d="M45 109 L60 104 L75 109 L72 121 L60 118 L48 121Z" fill="#aa1111"/>
+<path d="M30 112 L60 101 L90 112" fill="none" stroke="#ffd700" stroke-width="2"/>
+<ellipse cx="60" cy="68" rx="27" ry="30" fill="#c8845a"/>
+<path d="M33 62 Q25 40 35 25 Q45 46 42 56Z" fill="#ff4400"/>
+<path d="M40 56 Q36 31 50 15 Q55 39 52 53Z" fill="#ff6600"/>
+<path d="M50 53 Q50 21 60 10 Q65 36 63 51Z" fill="#ff8800"/>
+<path d="M63 51 Q70 23 80 18 Q78 43 74 53Z" fill="#ff6600"/>
+<path d="M74 53 Q82 31 90 35 Q84 49 80 59Z" fill="#ff4400"/>
+<path d="M33 62 Q60 52 87 62 Q85 50 60 47 Q35 50 33 62Z" fill="#8B0000"/>
+<ellipse cx="48" cy="67" rx="7" ry="5" fill="white"/>
+<ellipse cx="72" cy="67" rx="7" ry="5" fill="white"/>
+<ellipse cx="49" cy="67" rx="4" ry="4" fill="#cc2200"/>
+<ellipse cx="73" cy="67" rx="4" ry="4" fill="#cc2200"/>
+<ellipse cx="50" cy="66" rx="2" ry="2" fill="#111"/>
+<ellipse cx="74" cy="66" rx="2" ry="2" fill="#111"/>
+<path d="M41 61 Q48 58 55 61" fill="none" stroke="#4a0000" stroke-width="2"/>
+<path d="M65 61 Q72 58 79 61" fill="none" stroke="#4a0000" stroke-width="2"/>
+<path d="M52 82 Q60 88 68 82" fill="#cc4444"/>
+<path d="M44 63 L50 72" stroke="#8B0000" stroke-width="1.5" opacity=".7"/>
+<path d="M15 112 Q5 101 10 89 Q20 96 25 107Z" fill="#8B0000"/>
+<path d="M105 112 Q115 101 110 89 Q100 96 95 107Z" fill="#8B0000"/>
+<path d="M5 89 L10 89 Q7 96 10 101" fill="none" stroke="#ffd700" stroke-width="1.5"/>
+<path d="M115 89 L110 89 Q113 96 110 101" fill="none" stroke="#ffd700" stroke-width="1.5"/>`},
+
+{id:'zathrak',name:'ZATHRAK',title:'Pekelný Démon',color:'#FF6600',tagline:'PEKLO SLAVÍ!',
+svg:`<rect width="120" height="160" fill="#0d0400"/>
+<defs><radialGradient id="gz" cx="50%" cy="50%"><stop offset="0%" stop-color="#330800"/><stop offset="100%" stop-color="#0d0400"/></radialGradient></defs>
+<rect width="120" height="160" fill="url(#gz)"/>
+<ellipse cx="60" cy="158" rx="50" ry="10" fill="#ff3300" opacity=".2"/>
+<path d="M10 160 L10 110 Q60 96 110 110 L110 160Z" fill="#1a0400"/>
+<path d="M25 110 Q60 97 95 110 L92 142 Q60 150 28 142Z" fill="#3d0800"/>
+<path d="M60 106 L55 116 L60 121 L65 116Z" fill="#ff4400" opacity=".8"/>
+<path d="M45 113 L60 121 L75 113" fill="none" stroke="#ff4400" stroke-width="1.5" opacity=".6"/>
+<ellipse cx="60" cy="68" rx="30" ry="33" fill="#2d0600"/>
+<path d="M38 53 Q30 26 25 15 Q35 22 42 41Z" fill="#1a0300"/>
+<path d="M82 53 Q90 26 95 15 Q85 22 78 41Z" fill="#1a0300"/>
+<circle cx="25" cy="15" r="3" fill="#ff6600" opacity=".8"/>
+<circle cx="95" cy="15" r="3" fill="#ff6600" opacity=".8"/>
+<path d="M35 59 Q60 51 85 59" fill="none" stroke="#4a0800" stroke-width="2"/>
+<ellipse cx="47" cy="68" rx="9" ry="7" fill="#ff6600"/>
+<ellipse cx="73" cy="68" rx="9" ry="7" fill="#ff6600"/>
+<ellipse cx="47" cy="68" rx="5" ry="6" fill="#ff0000"/>
+<ellipse cx="73" cy="68" rx="5" ry="6" fill="#ff0000"/>
+<rect x="44" y="65" width="6" height="7" rx="1" fill="#1a0000"/>
+<rect x="70" y="65" width="6" height="7" rx="1" fill="#1a0000"/>
+<ellipse cx="47" cy="68" rx="12" ry="9" fill="none" stroke="#ff6600" stroke-width="2" opacity=".5"/>
+<ellipse cx="73" cy="68" rx="12" ry="9" fill="none" stroke="#ff6600" stroke-width="2" opacity=".5"/>
+<path d="M55 76 Q60 80 65 76 Q63 86 60 87 Q57 86 55 76Z" fill="#1a0200"/>
+<path d="M48 88 L52 97 L56 88" fill="#ddd"/>
+<path d="M64 88 L68 97 L72 88" fill="#ddd"/>
+<path d="M38 87 Q60 99 82 87 Q78 96 60 101 Q42 96 38 87Z" fill="#1a0300"/>
+<path d="M40 91 L35 101 L43 95Z" fill="#1a0300"/>
+<path d="M80 91 L85 101 L77 95Z" fill="#1a0300"/>`},
+
+{id:'aldric',name:'ALDRIC',title:'Železný Rytíř',color:'#4488FF',tagline:'ČEST A SLÁVA!',
+svg:`<rect width="120" height="160" fill="#000a1a"/>
+<defs><radialGradient id="ga" cx="50%" cy="40%"><stop offset="0%" stop-color="#001133"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>
+<rect width="120" height="160" fill="url(#ga)"/>
+<path d="M15 160 L15 110 Q60 97 105 110 L105 160Z" fill="#1a2233"/>
+<path d="M28 110 Q60 98 92 110 L88 140 Q60 147 32 140Z" fill="#2a3d55"/>
+<rect x="56" y="101" width="8" height="40" rx="2" fill="#4488ff" opacity=".65"/>
+<rect x="40" y="116" width="40" height="8" rx="2" fill="#4488ff" opacity=".65"/>
+<circle cx="35" cy="112" r="3" fill="#aaa"/><circle cx="85" cy="112" r="3" fill="#aaa"/>
+<circle cx="35" cy="137" r="3" fill="#aaa"/><circle cx="85" cy="137" r="3" fill="#aaa"/>
+<path d="M28 72 Q28 36 60 33 Q92 36 92 72 L92 91 L28 91Z" fill="#2a3d55"/>
+<path d="M55 33 L60 18 L65 33 Q63 28 60 27 Q57 28 55 33Z" fill="#3a5070"/>
+<rect x="30" y="69" width="60" height="22" rx="3" fill="#0a1a2a"/>
+<rect x="32" y="71" width="56" height="18" rx="2" fill="#4488ff" opacity=".28"/>
+<rect x="32" y="78" width="56" height="5" rx="1" fill="#4488ff" opacity=".85"/>
+<path d="M28 72 L18 82 L22 96 L28 91Z" fill="#2a3d55"/>
+<path d="M92 72 L102 82 L98 96 L92 91Z" fill="#2a3d55"/>
+<path d="M28 66 Q60 59 92 66" fill="none" stroke="#6699cc" stroke-width="2"/>
+<path d="M28 61 Q60 54 92 61" fill="none" stroke="#4477aa" stroke-width="1"/>
+<path d="M30 91 L90 91 L88 101 Q60 107 32 101Z" fill="#1a2233"/>
+<path d="M15 110 Q3 98 7 83 Q18 91 22 107Z" fill="#2a3d55"/>
+<path d="M105 110 Q117 98 113 83 Q102 91 98 107Z" fill="#2a3d55"/>
+<path d="M3 83 Q7 83 7 91" fill="none" stroke="#6699cc" stroke-width="2"/>
+<path d="M117 83 Q113 83 113 91" fill="none" stroke="#6699cc" stroke-width="2"/>`},
+
+{id:'sylvax',name:'SYLVAX',title:'Jedová Čarodějka',color:'#00cc44',tagline:'JEDY VÍTĚZÍ!',
+svg:`<rect width="120" height="160" fill="#001400"/>
+<defs><radialGradient id="gs" cx="50%" cy="30%"><stop offset="0%" stop-color="#002200"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>
+<rect width="120" height="160" fill="url(#gs)"/>
+<path d="M15 160 L20 102 Q60 91 100 102 L105 160Z" fill="#001a05"/>
+<path d="M30 106 L25 160" stroke="#003310" stroke-width="2"/>
+<path d="M50 101 L45 160" stroke="#003310" stroke-width="2"/>
+<path d="M70 101 L75 160" stroke="#003310" stroke-width="2"/>
+<path d="M90 106 L95 160" stroke="#003310" stroke-width="2"/>
+<path d="M20 73 Q20 36 60 31 Q100 36 100 73 L95 91 Q60 101 25 91Z" fill="#001a05"/>
+<path d="M30 73 Q30 43 60 39 Q90 43 90 73 L85 89 Q60 96 35 89Z" fill="#000a00" opacity=".8"/>
+<ellipse cx="60" cy="71" rx="24" ry="27" fill="#1a3020"/>
+<path d="M40 61 Q50 56 55 61" fill="none" stroke="#00cc44" stroke-width="1" opacity=".6"/>
+<path d="M65 61 Q70 56 80 61" fill="none" stroke="#00cc44" stroke-width="1" opacity=".6"/>
+<path d="M50 81 Q60 86 70 81" fill="none" stroke="#00cc44" stroke-width="1" opacity=".5"/>
+<ellipse cx="49" cy="69" rx="7" ry="5" fill="#00cc44" opacity=".9"/>
+<ellipse cx="71" cy="69" rx="7" ry="5" fill="#00cc44" opacity=".9"/>
+<ellipse cx="49" cy="69" rx="4" ry="3.5" fill="#003300"/>
+<ellipse cx="71" cy="69" rx="4" ry="3.5" fill="#003300"/>
+<rect x="47" y="67" width="4" height="5" rx="2" fill="#111"/>
+<rect x="69" y="67" width="4" height="5" rx="2" fill="#111"/>
+<ellipse cx="49" cy="69" rx="9" ry="7" fill="none" stroke="#00cc44" stroke-width="1.5" opacity=".5"/>
+<ellipse cx="71" cy="69" rx="9" ry="7" fill="none" stroke="#00cc44" stroke-width="1.5" opacity=".5"/>
+<path d="M53 83 Q60 87 67 83 Q64 89 60 90 Q56 89 53 83Z" fill="#003311"/>
+<path d="M20 102 Q10 82 15 66" fill="none" stroke="#001a05" stroke-width="8"/>
+<path d="M100 102 Q110 82 105 66" fill="none" stroke="#001a05" stroke-width="8"/>
+<path d="M20 102 Q10 81 15 66" fill="none" stroke="#003310" stroke-width="3"/>
+<circle cx="13" cy="68" r="4" fill="#004415"/>
+<path d="M100 102 Q110 81 105 66" fill="none" stroke="#003310" stroke-width="3"/>
+<circle cx="107" cy="68" r="4" fill="#004415"/>
+<circle cx="60" cy="106" r="7" fill="#001800"/>
+<circle cx="60" cy="106" r="7" fill="none" stroke="#00cc44" stroke-width="1.5" opacity=".7"/>
+<circle cx="58" cy="104" r="3" fill="#00cc44" opacity=".35"/>`},
+
+{id:'mortex',name:'MORTEX',title:'Nesmrtelný Žnec',color:'#aaaaaa',tagline:'SMRT NIKDY NEVZDÁ!',
+svg:`<rect width="120" height="160" fill="#080808"/>
+<defs><radialGradient id="gm" cx="50%" cy="40%"><stop offset="0%" stop-color="#1a1a1a"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>
+<rect width="120" height="160" fill="url(#gm)"/>
+<path d="M10 160 L15 107 Q60 94 105 107 L110 160Z" fill="#0d0d0d"/>
+<path d="M25 109 Q40 105 55 109 Q40 116 25 109Z" fill="#151515" opacity=".5"/>
+<path d="M65 109 Q80 105 95 109 Q80 116 65 109Z" fill="#151515" opacity=".5"/>
+<ellipse cx="60" cy="63" rx="30" ry="33" fill="#e8e0d0"/>
+<ellipse cx="60" cy="56" rx="25" ry="20" fill="#f5f0e8" opacity=".5"/>
+<path d="M32 73 Q30 81 35 89 Q38 83 40 76Z" fill="#d4ccbc"/>
+<path d="M88 73 Q90 81 85 89 Q82 83 80 76Z" fill="#d4ccbc"/>
+<path d="M38 89 Q38 101 45 104 Q60 108 75 104 Q82 101 82 89" fill="#ddd0bc" stroke="#bbb" stroke-width="1"/>
+<rect x="43" y="96" width="7" height="10" rx="1" fill="#f0e8d8"/>
+<rect x="51" y="98" width="6" height="9" rx="1" fill="#f0e8d8"/>
+<rect x="58" y="98" width="6" height="9" rx="1" fill="#f0e8d8"/>
+<rect x="65" y="98" width="6" height="9" rx="1" fill="#f0e8d8"/>
+<rect x="72" y="96" width="7" height="10" rx="1" fill="#f0e8d8"/>
+<rect x="50" y="96" width="1" height="11" fill="#0d0d0d" opacity=".6"/>
+<rect x="57" y="96" width="1" height="11" fill="#0d0d0d" opacity=".6"/>
+<rect x="64" y="96" width="1" height="11" fill="#0d0d0d" opacity=".6"/>
+<rect x="71" y="96" width="1" height="11" fill="#0d0d0d" opacity=".6"/>
+<path d="M55 79 Q60 74 65 79 Q63 86 60 87 Q57 86 55 79Z" fill="#1a1a1a"/>
+<ellipse cx="46" cy="65" rx="12" ry="10" fill="#1a1a1a"/>
+<ellipse cx="74" cy="65" rx="12" ry="10" fill="#1a1a1a"/>
+<ellipse cx="46" cy="66" rx="6" ry="5" fill="#4444ff" opacity=".7"/>
+<ellipse cx="74" cy="66" rx="6" ry="5" fill="#4444ff" opacity=".7"/>
+<ellipse cx="46" cy="65" rx="3" ry="3" fill="#8888ff"/>
+<ellipse cx="74" cy="65" rx="3" ry="3" fill="#8888ff"/>
+<ellipse cx="46" cy="65" rx="14" ry="12" fill="none" stroke="#4444ff" stroke-width="2" opacity=".5"/>
+<ellipse cx="74" cy="65" rx="14" ry="12" fill="none" stroke="#4444ff" stroke-width="2" opacity=".5"/>
+<path d="M60 30 Q62 41 58 49 Q61 56 60 63" fill="none" stroke="#bbb" stroke-width="1.5" opacity=".6"/>
+<path d="M15 107 Q5 91 8 76 L18 86Z" fill="#0d0d0d"/>
+<path d="M105 107 Q115 91 112 76 L102 86Z" fill="#0d0d0d"/>
+<line x1="100" y1="30" x2="108" y2="155" stroke="#555" stroke-width="3"/>
+<path d="M100 30 Q80 20 78 42 Q90 38 100 30Z" fill="#555"/>
+<path d="M100 30 Q80 20 78 42 Q90 38 100 30Z" fill="none" stroke="#888" stroke-width="1"/>`}
+];
+
+// ─── GAME STATE ───────────────────────────────────────────────────
+const CHOICES={
+  rock:    {label:'KÁMEN',  e:'✊', beats:'scissors'},
+  scissors:{label:'NŮŽKY', e:'✌️', beats:'paper'},
+  paper:   {label:'PAPÍR',  e:'🖐️', beats:'rock'}
+};
+let G={pChar:null,cChar:null,pWins:0,cWins:0,round:1,busy:false,maxW:3};
+
+// ─── UTILS ───────────────────────────────────────────────────────
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active')}
+function mkSVG(content,w=120,h=160){return`<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">${content}</svg>`}
+
+// ─── BUILD SELECT ────────────────────────────────────────────────
+function buildSelect(){
+  const g=document.getElementById('char-grid');
+  g.innerHTML='';
+  chars.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='char-card';
+    d.innerHTML=`${mkSVG(c.svg,120,160)}<div class="cn">${c.name}</div><div class="ct">${c.title}</div>`;
+    d.onclick=()=>pickChar(c);
+    g.appendChild(d);
+  });
+}
+
+function pickChar(c){
+  G.pChar=c;
+  const others=chars.filter(x=>x.id!==c.id);
+  G.cChar=others[Math.floor(Math.random()*others.length)];
+  document.querySelectorAll('.char-card').forEach((el,i)=>el.classList.toggle('selected',chars[i].id===c.id));
+  setTimeout(showVS,400);
+}
+
+// ─── VS SCREEN ───────────────────────────────────────────────────
+function showVS(){
+  document.getElementById('vsp-p').innerHTML=G.pChar.svg;
+  document.getElementById('vsp-c').innerHTML=G.cChar.svg;
+  document.getElementById('vsn-p').textContent=G.pChar.name;
+  document.getElementById('vsn-c').textContent=G.cChar.name;
+  showScreen('vs');
+  setTimeout(startArena,2600);
+}
+
+// ─── ARENA ───────────────────────────────────────────────────────
+function startArena(){
+  G.pWins=0;G.cWins=0;G.round=1;G.busy=false;
+  showScreen('arena');
+  document.getElementById('lb-pname').textContent=G.pChar.name;
+  document.getElementById('lb-cname').textContent=G.cChar.name;
+  setPortraits();updateBars();updateDots();updateRoundLbl();
+  showButtons(true);
+  document.getElementById('cntdown').textContent='';
+  document.getElementById('round-res').innerHTML='';
+}
+
+function setPortraits(){
+  document.getElementById('af-p').innerHTML=`<svg viewBox="0 0 120 160" width="120" height="155" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 14px ${G.pChar.color})">${G.pChar.svg}</svg>`;
+  document.getElementById('af-c').innerHTML=`<svg viewBox="0 0 120 160" width="120" height="155" xmlns="http://www.w3.org/2000/svg" style="transform:scaleX(-1);filter:drop-shadow(0 0 14px ${G.cChar.color})">${G.cChar.svg}</svg>`;
+  document.getElementById('af-p').className='af-portrait';
+  document.getElementById('af-c').className='af-portrait';
+}
+
+function updateBars(){
+  const m=G.maxW;
+  document.getElementById('lb-p').style.width=Math.max(0,(m-G.cWins)/m*100)+'%';
+  document.getElementById('lb-c').style.width=Math.max(0,(m-G.pWins)/m*100)+'%';
+}
+
+function updateDots(){
+  const pd=document.getElementById('p-dots'),cd=document.getElementById('c-dots');
+  pd.innerHTML='';cd.innerHTML='';
+  for(let i=1;i<=G.maxW;i++){
+    pd.innerHTML+=`<div class="dot${i<=G.pWins?' on':''}"></div>`;
+    cd.innerHTML+=`<div class="dot${i<=G.cWins?' on':''}"></div>`;
+  }
+}
+
+function updateRoundLbl(){document.getElementById('round-lbl').textContent='KOLO '+G.round}
+
+function showButtons(show){
+  document.getElementById('choice-bar').style.display=show?'flex':'none';
+  document.getElementById('hand-p').style.display='none';
+  document.getElementById('hand-c').style.display='none';
+}
+
+// ─── PICK ────────────────────────────────────────────────────────
+async function pick(choice){
+  if(G.busy)return;G.busy=true;
+  showButtons(false);
+  sndHit();
+  const cpuPicks=['rock','scissors','paper'];
+  const cpuChoice=cpuPicks[Math.floor(Math.random()*3)];
+
+  document.getElementById('hand-p').textContent='✊';
+  document.getElementById('hand-c').textContent='✊';
+  document.getElementById('hand-p').style.display='flex';
+  document.getElementById('hand-c').style.display='flex';
+
+  await countdown();
+
+  document.getElementById('hand-p').textContent=CHOICES[choice].e;
+  document.getElementById('hand-c').textContent=CHOICES[cpuChoice].e;
+  sndGo();
+  await sleep(300);
+
+  let res=(choice===cpuChoice)?'draw':(CHOICES[choice].beats===cpuChoice)?'player':'cpu';
+  await handleResult(res);
+}
+
+async function countdown(){
+  const el=document.getElementById('cntdown');
+  for(const n of['3','2','1']){
+    el.textContent=n;el.style.animation='none';void el.offsetWidth;el.style.animation='cdPop .3s ease';
+    sndTick();await sleep(600);
+  }
+  el.textContent='!';el.style.animation='none';void el.offsetWidth;el.style.animation='cdPop .2s ease';
+  await sleep(300);el.textContent='';
+}
+
+async function handleResult(res){
+  const pp=document.getElementById('af-p'),pc=document.getElementById('af-c');
+  const rr=document.getElementById('round-res');
+  pp.className='af-portrait';pc.className='af-portrait';
+
+  if(res==='player'){
+    G.pWins++;pp.classList.add('win');pc.classList.add('lose');
+    rr.innerHTML='<span style="color:#ffd700;text-shadow:0 0 20px gold;font-size:.75em">VÍTĚZ KOLA!</span>';
+    mkMsg('VÍTĚZ KOLA!','#ffd700');sndRoundW();
+  }else if(res==='cpu'){
+    G.cWins++;pp.classList.add('lose');pc.classList.add('win');
+    rr.innerHTML='<span style="color:#cc0000;text-shadow:0 0 18px #f00;font-size:.75em">PORAŽEN!</span>';
+    mkMsg('PORAŽEN!','#cc0000');sndRoundL();
+  }else{
+    pp.classList.add('draw');pc.classList.add('draw');
+    rr.innerHTML='<span style="color:#ff8800;text-shadow:0 0 14px #f80;font-size:.75em">REMÍZA!</span>';
+    mkMsg('REMÍZA!','#ff8800');sndDraw();
+  }
+
+  updateBars();updateDots();
+  await sleep(2000);
+
+  if(G.pWins>=G.maxW||G.cWins>=G.maxW){showFinish();return;}
+  if(res!=='draw')G.round++;
+  updateRoundLbl();
+  rr.innerHTML='';setPortraits();
+  G.busy=false;showButtons(true);
+}
+
+// ─── MK MESSAGE ──────────────────────────────────────────────────
+function mkMsg(text,color){
+  document.querySelectorAll('.mk-msg').forEach(e=>e.remove());
+  const el=document.createElement('div');
+  el.className='mk-msg';el.textContent=text;el.style.color=color;
+  el.style.textShadow=`0 0 20px ${color},0 0 40px ${color}`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1700);
+}
+
+// ─── FINISH ──────────────────────────────────────────────────────
+function showFinish(){
+  const won=G.pWins>=G.maxW;
+  const winner=won?G.pChar:G.cChar;
+  if(won){sndMatchW();document.getElementById('fin-title').textContent='DOKONÁNO!';document.getElementById('fin-title').style.color='#ffd700';}
+  else{sndMatchL();document.getElementById('fin-title').textContent='PORAŽEN!';document.getElementById('fin-title').style.color='#cc0000';}
+  document.getElementById('fin-name').textContent=winner.name;
+  document.getElementById('fin-tag').textContent=won?winner.tagline:'ZKUS TO ZNOVU, BOJOVNÍKU...';
+  document.getElementById('fin-score').textContent=G.pChar.name+': '+G.pWins+' — '+G.cChar.name+': '+G.cWins;
+  document.getElementById('fin-portrait').innerHTML=`<svg viewBox="0 0 120 160" style="width:160px;height:210px;filter:drop-shadow(0 0 28px ${winner.color})" xmlns="http://www.w3.org/2000/svg">${winner.svg}</svg>`;
+  showScreen('finish');
+}
+
+// ─── RESET ───────────────────────────────────────────────────────
+function resetGame(){
+  G={pChar:null,cChar:null,pWins:0,cWins:0,round:1,busy:false,maxW:3};
+  buildSelect();showScreen('select');
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+document.getElementById('screen-title').addEventListener('click',()=>{buildSelect();showScreen('select')});
+document.addEventListener('keydown',e=>{
+  const a=document.querySelector('.screen.active');if(!a)return;
+  if(a.id==='screen-title'){buildSelect();showScreen('select');}
+  if(a.id==='screen-arena'&&!G.busy){
+    if(e.key==='1'||e.key==='q'||e.key==='Q')pick('rock');
+    if(e.key==='2'||e.key==='w'||e.key==='W')pick('scissors');
+    if(e.key==='3'||e.key==='e'||e.key==='E')pick('paper');
+  }
+});
+</script>
+</body>
+</html>
