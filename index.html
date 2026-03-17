@@ -62,20 +62,20 @@ body::after{
 }
 .lifebars{
   width:100%;display:flex;align-items:center;gap:8px;
-  padding:8px 16px;background:rgba(0,0,0,.85);border-bottom:2px solid var(--red);
+  padding:10px 16px;background:rgba(0,0,0,.85);border-bottom:2px solid var(--red);
   flex-shrink:0;
 }
-.lb-wrap{flex:1;display:flex;flex-direction:column;gap:3px}
+.lb-wrap{flex:1;display:flex;flex-direction:column;gap:5px}
 .lb-wrap.cpu{align-items:flex-end}
-.lb-lbl{font-size:.3em;color:var(--gold);text-shadow:0 0 6px var(--gold)}
-.lb-track{width:100%;height:16px;background:#111;border:1px solid #333;overflow:hidden;position:relative}
+.lb-lbl{font-size:1.2em;color:var(--gold);text-shadow:0 0 6px var(--gold)}
+.lb-track{width:100%;height:22px;background:#111;border:1px solid #333;overflow:hidden;position:relative}
 .lb-fill{height:100%;background:linear-gradient(90deg,#a00,#f30,#f60);box-shadow:0 0 8px #f30;transition:width .5s ease}
 .lb-fill::after{content:'';position:absolute;top:0;left:0;right:0;height:40%;background:rgba(255,255,255,.15)}
 .lb-fill.cpu-fill{float:right}
 .round-box{text-align:center;white-space:nowrap;min-width:80px}
-.round-lbl{font-size:.35em;color:#fff;text-shadow:0 0 6px #fff}
-.dots{display:flex;gap:4px;justify-content:center;margin-top:3px}
-.dot{width:7px;height:7px;border-radius:50%;border:1px solid #555}
+.round-lbl{font-size:1.3em;color:#fff;text-shadow:0 0 6px #fff}
+.dots{display:flex;gap:5px;justify-content:center;margin-top:4px}
+.dot{width:11px;height:11px;border-radius:50%;border:1px solid #555}
 .dot.on{background:var(--gold);box-shadow:0 0 6px var(--gold);border-color:var(--gold)}
 .dot-sep{font-size:.25em;color:#333;text-align:center;margin:2px 0}
 
@@ -261,6 +261,43 @@ function sndMatchW(){
   [130,130,196].forEach((f,i)=>note(f,t+i*.3,.4,'sawtooth',.3));
 }
 function sndMatchL(){const t=ac().currentTime;[523,415,349,261,196].forEach((f,i)=>note(f,t+i*.2,.25,'sawtooth',.4))}
+
+// ─── BACKGROUND MUSIC ────────────────────────────────────────────
+// Melodie: d-moll, MK chiptune styl
+const BG_MELODY=[294,294,261,233,220,196,220,233,261,220,196,175,196,220,294,0];
+const BG_BASS  =[73, 0, 110,0, 117,0, 110,0, 73, 0, 110,0, 117,0, 110,0];
+const BG_STEP=0.2; // délka jednoho kroku v sekundách
+let bgGain=null,bgOn=false,bgHandle=null;
+
+function getBgGain(){
+  if(!bgGain){bgGain=ac().createGain();bgGain.connect(ac().destination);bgGain.gain.value=.45;}
+  return bgGain;
+}
+function noteG(f,t,dur,type,vol,gn){
+  const o=ac().createOscillator(),g=ac().createGain();
+  o.connect(g);g.connect(gn);o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.start(t);o.stop(t+dur);
+}
+function loopBg(){
+  if(!bgOn)return;
+  const t=ac().currentTime,gn=getBgGain();
+  BG_MELODY.forEach((f,i)=>{if(f>0)noteG(f,t+i*BG_STEP,BG_STEP*.78,'square',.28,gn);});
+  BG_BASS.forEach((f,i)=>{if(f>0)noteG(f,t+i*BG_STEP,BG_STEP*.55,'sawtooth',.18,gn);});
+  // Bicí — kick na 1. a 3. dobu, snare na 2. a 4.
+  [0,4,8,12].forEach(b=>noteG(60,t+b*BG_STEP,.1,'sawtooth',.3,gn));
+  [2,6,10,14].forEach(b=>noteG(200,t+b*BG_STEP,.06,'sawtooth',.12,gn));
+  bgHandle=setTimeout(loopBg,(BG_MELODY.length*BG_STEP-.18)*1000);
+}
+function startBgMusic(){
+  if(bgOn)return;bgOn=true;
+  getBgGain().gain.setValueAtTime(.45,ac().currentTime);
+  loopBg();
+}
+function stopBgMusic(){
+  bgOn=false;if(bgHandle)clearTimeout(bgHandle);
+  if(bgGain)bgGain.gain.setTargetAtTime(0,ac().currentTime,.4);
+}
 
 // ─── CHARACTERS ──────────────────────────────────────────────────
 const chars=[
@@ -470,6 +507,7 @@ function buildSelect(){
 }
 
 function pickChar(c){
+  stopBgMusic();
   G.pChar=c;
   const others=chars.filter(x=>x.id!==c.id);
   G.cChar=others[Math.floor(Math.random()*others.length)];
@@ -604,6 +642,7 @@ function mkMsg(text,color){
 
 // ─── FINISH ──────────────────────────────────────────────────────
 function showFinish(){
+  stopBgMusic();
   const won=G.pWins>=G.maxW;
   const winner=won?G.pChar:G.cChar;
   if(won){sndMatchW();document.getElementById('fin-title').textContent='DOKONÁNO!';document.getElementById('fin-title').style.color='#ffd700';}
@@ -622,10 +661,10 @@ function resetGame(){
 }
 
 // ─── INIT ────────────────────────────────────────────────────────
-document.getElementById('screen-title').addEventListener('click',()=>{buildSelect();showScreen('select')});
+document.getElementById('screen-title').addEventListener('click',()=>{startBgMusic();buildSelect();showScreen('select')});
 document.addEventListener('keydown',e=>{
   const a=document.querySelector('.screen.active');if(!a)return;
-  if(a.id==='screen-title'){buildSelect();showScreen('select');}
+  if(a.id==='screen-title'){startBgMusic();buildSelect();showScreen('select');}
   if(a.id==='screen-arena'&&!G.busy){
     if(e.key==='1'||e.key==='q'||e.key==='Q')pick('rock');
     if(e.key==='2'||e.key==='w'||e.key==='W')pick('scissors');
